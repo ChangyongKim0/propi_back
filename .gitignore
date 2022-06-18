@@ -27,3 +27,6 @@ yarn-error.log*
 
 # data
 /data
+
+# config
+/config
