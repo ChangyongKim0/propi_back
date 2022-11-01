@@ -1,47 +1,45 @@
-const { CONFIG_PATH, DATA_PATH } = require("./shortcut");
-const getDate = require("./getDate");
+import { HiddenObject } from "./globalTypes";
+import { CONFIG_PATH, DATA_PATH } from "./shortcut";
+import { getDate } from "./getDate";
 const fs = require("fs");
-const getApiDataFromServer = require("./getApiDataFromServer");
-const handleFoundPnuAsync = require("./handleFoundPnuAsync");
+import { getApiDataFromServer } from "./getApiDataFromServer";
+import { handleFoundPnuAsync, searchFoundPnu } from "./handleFoundPnuAsync";
 
 const _updateApiData = (
-  type,
-  id,
-  id_to_get,
-  is_pnu = true,
-  file_save = true
-) => {
-  if (!id) {
-    return null;
-  }
+  type: string,
+  id: string | string[],
+  id_to_get: string,
+  is_pnu: boolean = true,
+  file_save: boolean = true
+): Promise<HiddenObject<string> | null> => {
   const file_path =
-    DATA_PATH + type + "/" + (is_pnu ? id : id.join("-")) + ".json";
+    DATA_PATH +
+    type +
+    "/" +
+    (is_pnu ? id : (id as string[]).join("-")) +
+    ".json";
   try {
     const file_data = JSON.parse(fs.readFileSync(file_path));
     if (file_data.date == getDate()) {
-      console.log("eee");
       return file_data.data[id_to_get];
     }
     // console.log(new_pnu);
   } catch {}
   return getApiDataFromServer(type, id, is_pnu)
     .then((data) => {
-      // console.log(data);
-      console.log("ddd");
       if (file_save) {
         fs.writeFileSync(
           file_path,
-          JSON.stringify({ date: getDate(), data: data }, "", "  ")
+          JSON.stringify({ date: getDate(), data: data }, undefined, "  ")
         );
         // console.log(getDate());
         console.log(
           "successfully write api data file of TYPE : " +
             type +
             "; ID : " +
-            (is_pnu ? id : id.join("-"))
+            (is_pnu ? id : (id as string[]).join("-"))
         );
       }
-      console.log("dddf");
       return data[id_to_get];
     })
     .catch((err) => {
@@ -50,7 +48,7 @@ const _updateApiData = (
         "TYPE : " +
           type +
           "; ID : " +
-          (is_pnu ? id : id.join("-")) +
+          (is_pnu ? id : (id as string[]).join("-")) +
           "; IS_PNU : " +
           is_pnu
       );
@@ -59,7 +57,15 @@ const _updateApiData = (
     });
 };
 
-const _getApiDataEachWithFoundPnu = (type, new_pnu, id, file_save = true) => {
+const _getApiDataEachWithFoundPnu = (
+  type: string,
+  new_pnu: string | null,
+  id: string,
+  file_save: boolean = true
+): Promise<HiddenObject<string> | null> => {
+  if (new_pnu === null) {
+    return _updateApiData(type, id, id, true, file_save);
+  }
   switch (type.split("_")[0]) {
     case "land":
       return _updateApiData(type, new_pnu, id, true, file_save);
@@ -85,13 +91,13 @@ const _getApiDataEachWithFoundPnu = (type, new_pnu, id, file_save = true) => {
 };
 
 const _handleMultipleFoundPnuAsync = (
-  id_list,
-  previous_found_pnu_list = []
-) => {
+  id_list: string[],
+  previous_found_pnu_list: string[] = []
+): Promise<string[] | null> => {
   // console.log(id_list);
   // console.log(previous_found_pnu_list);
   if (id_list.length == 0) {
-    return previous_found_pnu_list;
+    return Promise.resolve(previous_found_pnu_list);
   }
   let index_that_id_is_included_in_previous_found_pnu_list = -1;
   previous_found_pnu_list.map((e, idx) => {
@@ -110,38 +116,48 @@ const _handleMultipleFoundPnuAsync = (
       previous_found_pnu_list
     );
   } else {
-    return handleFoundPnuAsync
-      .handleFoundPnuAsync(id_list[0])
-      .then((new_pnu) => {
-        // console.log(new_pnu);
+    return handleFoundPnuAsync(id_list[0]).then((new_pnu) => {
+      if (new_pnu !== null) {
         previous_found_pnu_list.push(new_pnu);
         return _handleMultipleFoundPnuAsync(
           id_list.slice(1),
           previous_found_pnu_list
         );
-      });
+      }
+      return null;
+    });
   }
 };
 
-const getApiData = (type, id, is_multiple = false, save_file = true) => {
+export const getApiData = (
+  type: string | string[],
+  id: string | string[],
+  is_multiple: boolean = false,
+  save_file: boolean = true
+): Promise<HiddenObject<string> | null | (HiddenObject<string> | null)[]> => {
   if (is_multiple) {
     if (save_file) {
-      _handleMultipleFoundPnuAsync(id).then((new_pnu_list) => {
+      _handleMultipleFoundPnuAsync(id as string[]).then((new_pnu_list) => {
+        if (new_pnu_list === null) {
+          return Promise.resolve(null);
+        }
         return Promise.all(
-          type.map((e, idx) => {
+          (type as string[]).map((e, idx) => {
             return _getApiDataEachWithFoundPnu(e, new_pnu_list[idx], id[idx]);
           })
         );
       });
     }
 
-    const found_pnu_list = id.map(handleFoundPnuAsync.searchFoundPnu);
+    const found_pnu_list = (id as string[]).map(searchFoundPnu);
 
     return Promise.all(
-      type.map((e, idx) => {
+      (type as string[]).map((e, idx) => {
         return _getApiDataEachWithFoundPnu(
           e,
-          found_pnu_list[idx] == -1 ? id[idx] : found_pnu_list[idx],
+          found_pnu_list[idx] == -1
+            ? (id as string[])[idx]
+            : (found_pnu_list as string[])[idx],
           id[idx],
           false
         );
@@ -149,21 +165,23 @@ const getApiData = (type, id, is_multiple = false, save_file = true) => {
     );
   } else {
     if (save_file) {
-      handleFoundPnuAsync.handleFoundPnuAsync(id).then((new_pnu) => {
-        return _getApiDataEachWithFoundPnu(type, new_pnu, id);
+      handleFoundPnuAsync(id as string).then((new_pnu) => {
+        return _getApiDataEachWithFoundPnu(
+          type as string,
+          new_pnu,
+          id as string
+        );
       });
     }
 
-    const found_pnu = handleFoundPnuAsync.searchFoundPnu(id);
+    const found_pnu = searchFoundPnu(id as string);
     return Promise.resolve(
       _getApiDataEachWithFoundPnu(
-        type,
-        found_pnu == -1 ? id : found_pnu,
-        id,
+        type as string,
+        found_pnu == -1 ? (id as string) : found_pnu,
+        id as string,
         false
       )
     );
   }
 };
-
-module.exports = getApiData;
