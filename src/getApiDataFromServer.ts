@@ -88,6 +88,7 @@ export const getApiDataFromServer = (
   let id_2_path_list: (Path | undefined)[] = [];
   let id_2_concatenate_list: (string | undefined)[] = [];
   const config_data: ObjectOf<ConfigData> = JSON.parse(
+    // fs.readFileSync(CONFIG_PATH + type + ".config_deprecated.json")
     fs.readFileSync(CONFIG_PATH + type + ".config.json")
   );
   Object.keys(config_data).map((key) => {
@@ -102,9 +103,13 @@ export const getApiDataFromServer = (
         each_data.base_url,
         each_data.base_inputs,
         each_data.required_input_list,
-        (is_pnu ? [id] : id) as string[]
+        (is_pnu ? [id] : id) as string[],
+        () => {},
+        () => {},
+        each_data.base_url.includes("nsdi.") ? 50 : 200
       )
         .then((res) => {
+          console.log(each_data.illust + " responded.");
           return forceListType(getDeepData(res, each_data.path));
         })
         .catch((err: ErrorType) => {

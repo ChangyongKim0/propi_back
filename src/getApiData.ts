@@ -39,6 +39,13 @@ const _updateApiData = (
             "; ID : " +
             (is_pnu ? id : (id as string[]).join("-"))
         );
+      } else {
+        console.log(
+          "successfully get api data file of TYPE : " +
+            type +
+            "; ID : " +
+            (is_pnu ? id : (id as string[]).join("-"))
+        );
       }
       return data[id_to_get];
     })
@@ -136,19 +143,6 @@ export const getApiData = (
   save_file: boolean = true
 ): Promise<HiddenObject<string> | null | (HiddenObject<string> | null)[]> => {
   if (is_multiple) {
-    if (save_file) {
-      _handleMultipleFoundPnuAsync(id as string[]).then((new_pnu_list) => {
-        if (new_pnu_list === null) {
-          return Promise.resolve(null);
-        }
-        return Promise.all(
-          (type as string[]).map((e, idx) => {
-            return _getApiDataEachWithFoundPnu(e, new_pnu_list[idx], id[idx]);
-          })
-        );
-      });
-    }
-
     const found_pnu_list = (id as string[]).map(searchFoundPnu);
 
     return Promise.all(
@@ -162,18 +156,22 @@ export const getApiData = (
           false
         );
       })
-    );
+    ).then((value) => {
+      if (save_file) {
+        _handleMultipleFoundPnuAsync(id as string[]).then((new_pnu_list) => {
+          if (new_pnu_list === null) {
+            return Promise.resolve(null);
+          }
+          return Promise.all(
+            (type as string[]).map((e, idx) => {
+              return _getApiDataEachWithFoundPnu(e, new_pnu_list[idx], id[idx]);
+            })
+          );
+        });
+      }
+      return value;
+    });
   } else {
-    if (save_file) {
-      handleFoundPnuAsync(id as string).then((new_pnu) => {
-        return _getApiDataEachWithFoundPnu(
-          type as string,
-          new_pnu,
-          id as string
-        );
-      });
-    }
-
     const found_pnu = searchFoundPnu(id as string);
     return Promise.resolve(
       _getApiDataEachWithFoundPnu(
@@ -182,6 +180,17 @@ export const getApiData = (
         id as string,
         false
       )
-    );
+    ).then((value) => {
+      if (save_file) {
+        handleFoundPnuAsync(id as string).then((new_pnu) => {
+          return _getApiDataEachWithFoundPnu(
+            type as string,
+            new_pnu,
+            id as string
+          );
+        });
+      }
+      return value;
+    });
   }
 };

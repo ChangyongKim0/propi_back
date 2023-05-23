@@ -32,6 +32,12 @@ var _updateApiData = function (type, id, id_to_get, is_pnu, file_save) {
                 "; ID : " +
                 (is_pnu ? id : id.join("-")));
         }
+        else {
+            console.log("successfully get api data file of TYPE : " +
+                type +
+                "; ID : " +
+                (is_pnu ? id : id.join("-")));
+        }
         return data[id_to_get];
     })["catch"](function (err) {
         console.log("getApiData.js:_updateApiData");
@@ -104,31 +110,35 @@ var getApiData = function (type, id, is_multiple, save_file) {
     if (is_multiple === void 0) { is_multiple = false; }
     if (save_file === void 0) { save_file = true; }
     if (is_multiple) {
-        if (save_file) {
-            _handleMultipleFoundPnuAsync(id).then(function (new_pnu_list) {
-                if (new_pnu_list === null) {
-                    return Promise.resolve(null);
-                }
-                return Promise.all(type.map(function (e, idx) {
-                    return _getApiDataEachWithFoundPnu(e, new_pnu_list[idx], id[idx]);
-                }));
-            });
-        }
         var found_pnu_list_1 = id.map(handleFoundPnuAsync_1.searchFoundPnu);
         return Promise.all(type.map(function (e, idx) {
             return _getApiDataEachWithFoundPnu(e, found_pnu_list_1[idx] == -1
                 ? id[idx]
                 : found_pnu_list_1[idx], id[idx], false);
-        }));
+        })).then(function (value) {
+            if (save_file) {
+                _handleMultipleFoundPnuAsync(id).then(function (new_pnu_list) {
+                    if (new_pnu_list === null) {
+                        return Promise.resolve(null);
+                    }
+                    return Promise.all(type.map(function (e, idx) {
+                        return _getApiDataEachWithFoundPnu(e, new_pnu_list[idx], id[idx]);
+                    }));
+                });
+            }
+            return value;
+        });
     }
     else {
-        if (save_file) {
-            (0, handleFoundPnuAsync_1.handleFoundPnuAsync)(id).then(function (new_pnu) {
-                return _getApiDataEachWithFoundPnu(type, new_pnu, id);
-            });
-        }
         var found_pnu = (0, handleFoundPnuAsync_1.searchFoundPnu)(id);
-        return Promise.resolve(_getApiDataEachWithFoundPnu(type, found_pnu == -1 ? id : found_pnu, id, false));
+        return Promise.resolve(_getApiDataEachWithFoundPnu(type, found_pnu == -1 ? id : found_pnu, id, false)).then(function (value) {
+            if (save_file) {
+                (0, handleFoundPnuAsync_1.handleFoundPnuAsync)(id).then(function (new_pnu) {
+                    return _getApiDataEachWithFoundPnu(type, new_pnu, id);
+                });
+            }
+            return value;
+        });
     }
 };
 exports.getApiData = getApiData;

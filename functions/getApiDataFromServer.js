@@ -46,7 +46,7 @@ const getApiDataFromServer = (type, id, is_pnu = true) => {
   let id_2_path_list = [];
   let id_2_concatenate_list = [];
   const config_data = JSON.parse(
-    fs.readFileSync(CONFIG_PATH + type + ".config.json")
+    fs.readFileSync(CONFIG_PATH + type + ".config_deprecated.json")
   );
   Object.keys(config_data).map((key) => {
     const each_data = config_data[key];

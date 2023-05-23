@@ -75,14 +75,17 @@ var getApiDataFromServer = function (type, id, is_pnu) {
     var id_2_name_list = [];
     var id_2_path_list = [];
     var id_2_concatenate_list = [];
-    var config_data = JSON.parse(fs.readFileSync(shortcut_1.CONFIG_PATH + type + ".config.json"));
+    var config_data = JSON.parse(
+    // fs.readFileSync(CONFIG_PATH + type + ".config_deprecated.json")
+    fs.readFileSync(shortcut_1.CONFIG_PATH + type + ".config.json"));
     Object.keys(config_data).map(function (key) {
         var each_data = config_data[key];
         // console.log(
         //   "REQUESTED API :" + key + "; WITH ID : " + id + " AT TIME : " + Date.now()
         // );
-        promise_list.push((0, requestApi_1.requestApi)(each_data.authkey_name, each_data.authkey, each_data.base_url, each_data.base_inputs, each_data.required_input_list, (is_pnu ? [id] : id))
+        promise_list.push((0, requestApi_1.requestApi)(each_data.authkey_name, each_data.authkey, each_data.base_url, each_data.base_inputs, each_data.required_input_list, (is_pnu ? [id] : id), function () { }, function () { }, each_data.base_url.includes("nsdi.") ? 50 : 200)
             .then(function (res) {
+            console.log(each_data.illust + " responded.");
             return forceListType(getDeepData(res, each_data.path));
         })["catch"](function (err) {
             console.log("getApiDataFromServer.js:getApiDataFromServer:requestApi");
